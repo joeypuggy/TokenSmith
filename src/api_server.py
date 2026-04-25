@@ -35,7 +35,15 @@ from src.feedback_store import (
 )
 from src.instrumentation.logging import get_logger
 from src.ranking.ranker import EnsembleRanker
-from src.retriever import filter_retrieved_chunks, BM25Retriever, FAISSRetriever, IndexKeywordRetriever, get_page_numbers, load_artifacts
+from src.retriever import (
+    filter_retrieved_chunks,
+    BM25Retriever,
+    FAISSRetriever,
+    IndexKeywordRetriever,
+    cluster_and_summarize_chunks,
+    get_page_numbers,
+    load_artifacts,
+)
 from src.user_feedback_model import TopicExtractor, estimate_difficulty
 
 # Constants
@@ -384,6 +392,20 @@ async def chat_stream(request: ChatRequest):
         topk_idxs, ordered_ranked_scores = _retrieve_and_rank(request.query, top_k=max_chunks)
         topk_idxs = [int(i) for i in topk_idxs]
         ranked_chunks = [chunks[i] for i in topk_idxs[:max_chunks]]
+    
+    # Cluster and summarize if enabled
+    if ranked_chunks and _config.enable_cluster_summaries:
+        try:
+            summaries = cluster_and_summarize_chunks(
+                request.query,
+                ranked_chunks,
+                _config,
+                _config.gen_model,
+            )
+            # Keep both original chunks and summaries
+            ranked_chunks = ranked_chunks + summaries
+        except Exception as exc:
+            print(f"Warning: cluster summarization failed: {exc}")
     
     if not _config.gen_model:
         raise HTTPException(status_code=500, detail="Model path not configured.")

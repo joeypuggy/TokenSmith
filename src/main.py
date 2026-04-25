@@ -194,11 +194,13 @@ def get_answer(
 
         # Step 3b: Cluster retrieved chunks into related groups and summarize them
         try:
-            ranked_chunks = cluster_and_summarize_chunks(
+            summaries = cluster_and_summarize_chunks(
                 question,
                 ranked_chunks,
                 cfg.gen_model,
             )
+            # Keep both original chunks and summaries for better answers
+            ranked_chunks = ranked_chunks + summaries
         except Exception as e:
             if console:
                 console.print(f"Step 3b failed: {e}")
