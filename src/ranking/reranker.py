@@ -39,8 +39,9 @@ def rerank_with_cross_encoder(query: str, chunks: List[str], top_n: int) -> List
     # Combine chunks with their scores and sort
     chunk_with_scores = list(zip(chunks, scores))
     chunk_with_scores.sort(key=lambda x: x[1], reverse=True)
-
-    return chunk_with_scores[:top_n]
+    
+    #return chunk_with_scores[:top_n] #hack fix later
+    return [chunk for chunk, _ in chunk_with_scores[:top_n]]
 
 
 # -------------------------- Reranking Router -----------------------------

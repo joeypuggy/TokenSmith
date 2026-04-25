@@ -23,6 +23,7 @@ from src.retriever import (
     BM25Retriever, 
     FAISSRetriever, 
     IndexKeywordRetriever, 
+    cluster_and_summarize_chunks,
     get_page_numbers, 
     load_artifacts
 )
@@ -190,6 +191,17 @@ def get_answer(
         ranked_chunks = rerank(question, ranked_chunks, mode=cfg.rerank_mode, top_n=cfg.rerank_top_k)
         # print("Reranked Chunks", type(ranked_chunks), len(ranked_chunks), type(ranked_chunks[0]) if ranked_chunks else "No chunks")
         # print("Example reranked chunk content:", ranked_chunks[0] if ranked_chunks else "No chunks after reranking")
+
+        # Step 3b: Cluster retrieved chunks into related groups and summarize them
+        try:
+            ranked_chunks = cluster_and_summarize_chunks(
+                question,
+                ranked_chunks,
+                cfg.gen_model,
+            )
+        except Exception as e:
+            if console:
+                console.print(f"Step 3b failed: {e}")
 
     if not ranked_chunks and not cfg.disable_chunks:
         if console:

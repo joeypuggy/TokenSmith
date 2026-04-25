@@ -20,6 +20,7 @@ import numpy as np
 from src.embedder import CachedEmbedder
 
 from src.config import RAGConfig
+from src.generator import run_llama_cpp, dedupe_generated_text
 from src.index_builder import preprocess_for_bm25
 
 
@@ -76,6 +77,92 @@ def get_page_numbers(chunk_indices: list[int], metadata: list[dict]) -> dict[int
 def filter_retrieved_chunks(cfg: RAGConfig, chunks, ordered):
     topk_idxs = ordered[:cfg.top_k]
     return topk_idxs
+
+# -------------------------- Clustering + summarization -------------------
+
+def cluster_candidate_chunks(
+    chunks: List[str],
+    embedder: CachedEmbedder,
+    similarity_threshold: float = 0.75,
+) -> List[List[int]]:
+    """Cluster candidate chunks by embedding similarity."""
+    if len(chunks) <= 1:
+        return [[i] for i in range(len(chunks))]
+
+    embeddings = embedder.encode(chunks).astype("float32")
+    # Normalize for cosine similarity
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    norms[norms == 0] = 1.0
+    embeddings = embeddings / norms
+
+    clusters: List[List[int]] = []
+    centroids: List[np.ndarray] = []
+
+    for idx, emb in enumerate(embeddings):
+        if not centroids:
+            clusters.append([idx])
+            centroids.append(emb.copy())
+            continue
+
+        similarities = np.dot(np.stack(centroids, axis=0), emb)
+        best_idx = int(np.argmax(similarities))
+        best_sim = float(similarities[best_idx])
+
+        if best_sim >= similarity_threshold:
+            clusters[best_idx].append(idx)
+        else:
+            clusters.append([idx])
+            centroids.append(emb.copy())
+
+    return clusters
+
+
+def summarize_texts(
+    texts: List[str],
+    query: str,
+    model_path: str,
+) -> str:
+    if not texts:
+        return ""
+
+    content = "\n\n".join(texts)
+    prompt = f"""You are a textbook assistant.
+Summarize the following related excerpts in a concise, fact-focused way that is most relevant to the user question.
+
+Question: {query}
+
+Excerpts:
+{content}
+
+Summary:"""
+
+    result = run_llama_cpp(prompt, model_path, max_tokens=150, temperature=0.2)
+    return result["choices"][0]["text"].strip()
+
+
+def cluster_and_summarize_chunks(
+    query: str,
+    chunks: List[str],
+    model_path: str,
+) -> List[str]:
+    if len(chunks) <= 1:
+        return chunks
+
+    embedder = _get_embedder(RAGConfig().embed_model)
+    normalized_chunks = [c if isinstance(c, str) else str(c) for c in chunks]
+    clusters = cluster_candidate_chunks(
+        normalized_chunks,
+        embedder,
+        similarity_threshold=0.75,
+    )
+
+    summaries = []
+    for cluster in clusters:
+        cluster_texts = [chunks[idx] for idx in cluster]
+        summary = summarize_texts(cluster_texts, query, model_path)
+        summaries.append(summary)
+
+    return summaries
 
 # -------------------------- Retrieval core ------------------------------
 
