@@ -144,8 +144,10 @@ def cluster_and_summarize_chunks(
     query: str,
     chunks: List[str],
     model_path: str,
+    max_depth: int = 2,
 ) -> List[str]:
-    if len(chunks) <= 1:
+    """Recursively cluster and summarize chunks to build hierarchical summaries."""
+    if max_depth <= 0 or len(chunks) <= 1:
         return chunks
 
     embedder = _get_embedder(RAGConfig().embed_model)
@@ -162,7 +164,16 @@ def cluster_and_summarize_chunks(
         summary = summarize_texts(cluster_texts, query, model_path)
         summaries.append(summary)
 
-    return summaries
+    # Recursively summarize the summaries
+    higher_summaries = cluster_and_summarize_chunks(
+        query,
+        summaries,
+        model_path,
+        max_depth - 1,
+    )
+
+    # Return all levels: original chunks + summaries + higher summaries
+    return chunks + summaries + higher_summaries
 
 # -------------------------- Retrieval core ------------------------------
 

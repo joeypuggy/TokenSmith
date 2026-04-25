@@ -198,8 +198,8 @@ def get_answer(
                 question,
                 ranked_chunks,
                 cfg.gen_model,
+                max_depth=1,
             )
-            # Keep both original chunks and summaries for better answers
             ranked_chunks = ranked_chunks + summaries
         except Exception as e:
             if console:

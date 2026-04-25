@@ -21,7 +21,7 @@ class RAGConfig:
     top_k: int = 10
     num_candidates: int = 60
     embed_model: str = "models/Qwen3-Embedding-4B-Q5_K_M.gguf"
-    embedding_model_context_window: int = 4096
+    embedding_model_context_window: int = 8192
     ensemble_method: str = "rrf"
     rrf_k: int = 60
     ranker_weights: Dict[str, float] = field(

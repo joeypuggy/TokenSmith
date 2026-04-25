@@ -1,5 +1,5 @@
 embed_model: "models/Qwen3-Embedding-4B-Q5_K_M.gguf"
-embedding_model_context_window: 4096
+embedding_model_context_window: 8192
 top_k: 10
 num_candidates: 50
 ensemble_method: "rrf"
