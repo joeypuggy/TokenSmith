@@ -30,6 +30,7 @@ class RunLogger:
                       page_map: Dict[int, int], 
                       full_response: str,
                       top_k: int,
+                      summaries: Optional[List[str]] = None,
                       additional_log_info: Optional[Dict[str, Any]] = None):
         """Creates a unique JSON file for this specific chat request."""
         
@@ -57,6 +58,7 @@ class RunLogger:
                 "chunks": chunks[:len(top_idxs)],
                 "sources": sources[:len(top_idxs)],
                 "page_numbers": [page_map.get(i, 1) for i in top_idxs],
+                "summaries": summaries or [],
                 "full_response": full_response
             }
         else:
@@ -78,6 +80,7 @@ class RunLogger:
                 "config_state" : config_state,
                 "top_k": top_k,
                 "retrieved_chunks": retrieved_chunks,
+                "summaries": summaries or [],
                 "full_response": full_response
             }
         if additional_log_info:

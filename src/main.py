@@ -261,6 +261,7 @@ def get_answer(
             page_map=page_nums,
             full_response=ans,
             top_k=len(topk_idxs),
+            summaries=summaries if 'summaries' in locals() else [],
             additional_log_info=additional_log_info
         )
         return ans
